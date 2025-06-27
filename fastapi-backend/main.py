@@ -3,7 +3,7 @@ from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import Field, Session, SQLModel, create_engine, select
 
-class Hero(SQLModel, table=True):
+class Battery(SQLModel, table=True):
     id: int | None=Field(default=None, primary_key=True)
     battery: float
     
@@ -41,11 +41,11 @@ class BatteryData(BaseModel):
 
 @app.post("/battery")
 def save_battery(data: BatteryData, session: SessionDep):
-    hero = Hero(battery=data.battery_level) #new row (one field: battery)
-    session.add(hero) #want to insert into database
+    receive_battery = Battery(battery=data.battery_level) #new row (one field: battery)
+    session.add(battery) #want to insert into database
     session.commit() #sends changes to actual database
-    session.refresh(hero) #pulls updates data to object
-    return {"id": hero.id, "battery": hero.battery} #sends backend to frontend so it knows what was saved
+    session.refresh(battery) #pulls updates data to object
+    return {"id": battery.id, "battery": battery.battery} #sends backend to frontend so it knows what was saved
     
     
 @app.post("/items")
