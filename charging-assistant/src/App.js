@@ -24,7 +24,9 @@ function App() {
     <div>
       <strong>Charge level</strong>:
       <span> {(level * 100).toFixed(0)}%</span>
+      <strong></strong>
     </div>
+
   );
 }
 
