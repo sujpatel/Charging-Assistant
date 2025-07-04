@@ -6,6 +6,7 @@ import httpx
 import os
 from fastapi import Depends
 from typing import Annotated
+from sqlalchemy import desc 
 
 class Battery(SQLModel, table=True):
     id: int | None=Field(default=None, primary_key=True)
@@ -73,36 +74,19 @@ API_KEY = os.getenv("EIA_API_KEY")
 @app.get("/eia-data")
 async def get_eia_data(session: SessionDep):
     url = "https://api.eia.gov/v2/electricity/rto/region-data/data/"
-    headers = {
-        "X-Params" : '''{
-    "frequency": "hourly",
-    "data": [
-        "value"
-    ],
-    "facets": {
-        "respondent": [
-            "PJM"
-        ]
-    },
-    "start": null,
-    "end": null,
-    "sort": [
-        {
-            "column": "period",
-            "direction": "desc"
-        }
-    ],
-    "offset": 0,
-    "length": 5000
-}''' 
-    }
     
     params = {
-        "api_key": API_KEY
+        "api_key": API_KEY,
+        "frequency": "hourly",
+        "data[]": "value",
+        "facets[respondent][]": "PJM",
+        "sort[0][column]": "period",
+        "sort[0][direction]": "desc",
+        "length": 5
     }
     
     async with httpx.AsyncClient() as client:
-        response = await client.get(url, headers=headers, params=params)
+        response = await client.get(url, params=params)
     
     if response.status_code != 200:
         return {"error": "Failed to fetch data", "status": response.status_code}
@@ -131,6 +115,30 @@ async def get_eia_data(session: SessionDep):
     session.commit()
     
     return {"inserted": len(data)}
+
+@app.get("/current-grid")
+def get_current_grid(session: SessionDep):
+    latest_data = session.exec(
+        select(EIAData).order_by(desc(EIAData.period))
+    ).first()
+    
+    if not latest_data:
+        return {"error": "No grid data available yet"}
+    value = latest_data.value
+
+    if value < 80000:
+        status = "low"
+    elif value < 120000:
+        status = "medium"
+    else:
+        status = "high"
+    
+    return {
+        "period": latest_data.period,
+        "value": value,
+        "unit": latest_data.value_units,
+        "status": status
+    }
         
         
     
@@ -140,4 +148,5 @@ async def get_eia_data(session: SessionDep):
 
 #run virtual environment with ..\backend\venv\Scripts\Activate.ps1
  
+ #uvicorn main:app --reload
     
