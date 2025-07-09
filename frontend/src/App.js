@@ -1,5 +1,8 @@
 import React, { useEffect, useState } from "react"
 import { useBattery } from "react-use";
+import { Line } from 'react-chartjs-2';
+import { Chart, LineElement, PointElement, LinearScale, CategoryScale, Tooltip, Legend } from 'chart.js';
+Chart.register(LineElement, PointElement, LinearScale, CategoryScale, Tooltip, Legend);
 
 function App() {
   const [data, setData] = useState(null);
@@ -7,6 +10,43 @@ function App() {
 
   const battery = useBattery();
   const { level } = battery;
+
+  const [history, setHistory] = useState([]);
+
+
+  useEffect(() => {
+    fetch('http://localhost:8000/grid-history-24')
+      .then(res => res.json())
+      .then(data => {
+        setHistory(data);
+      });
+  }, []);
+
+
+
+
+  const chartData = {
+    //x axis labels
+    labels: history.map(point => {
+      let period = point.period;
+      if (period && period.length === 13) {
+        period += ":00:00Z";
+      }
+      const date = new Date(period);
+      return isNaN(date.getTime()) ? 'Invalid' : date.toLocaleTimeString();
+    }),
+    //y axis labels
+    datasets: [
+      {
+        label: 'Grid Demand (MW)',
+        data: history.map(point => point.value),
+        fill: false,
+        borderColor: 'rgb(75, 192, 192)',
+        tension: 0.1
+      }
+    ]
+  };
+
 
   useEffect(() => {
     if (level !== undefined) {
@@ -19,6 +59,8 @@ function App() {
       });
     }
   }, [level]);
+
+
 
   useEffect(() => {
     fetch('http://localhost:8000/eia-data')
@@ -53,20 +95,55 @@ function App() {
     messageColor = "bg-red-100 text-red-800";
   }
 
+  function getStatus(value) {
+    if (value < 80000) return "Low";
+    if (value < 120000) return "Medium";
+    return "High";
+  }
   return (
-    <div className="max-w-xl mx-auto mt-10 p-6 bg-white rounded-lg shadow space-y-6 font-sans text-lg">
-      <h1 className="text-2xl font-bold mb-4">Energy Aware Charging Assistant</h1>
-      <div className="flex space-x-8 mb-4">
-        <div className="flex flex-col items-center">
-          <span className="text-3xl font-bold">{batteryPercentage}%</span>
-          <span className="text-gray-500">Charging</span>
+    <div className="">
+      <h1 className="">Energy Aware Charging Assistant</h1>
+      <div className="">
+        <div className="">
+          <span className="">{batteryPercentage}%</span>
+          <span className="">Charging</span>
         </div>
-        <div className="flex flex-col items-center">
-          <span className="text-3xl font-bold">{gridLoadPercent.toFixed(0)}%</span>
-          <span className="text-gray-500">Grid demand</span>
+        <div className="">
+          <span className="">{gridLoadPercent.toFixed(0)}%</span>
+          <span className="">Grid demand</span>
         </div>
       </div>
-      <div className={`p-3 rounded text-center font-semibold ${messageColor}`}>{message}</div>
+      <div className={`${messageColor}`}>{message}</div>
+      <div className="my-8">
+        <h2 className="text-xl font-bold mb-2">Grid Demand (Last 24 hours) </h2>
+        <Line data={chartData} />
+      </div>
+      <div style={{ marginTop: "2rem" }}>
+        <h2>Grid Demand History (Last 24 hours)</h2>
+        <table border="1" cellPadding="6" cellSpace="0" style={{ width: "100%", borderCollapse: "collapse" }}>
+          <thead>
+            <tr>
+              <th>Date/Time</th>
+              <th>Grid Demand(MW)</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {history.map((point, idx) => {
+              let period = point.period;
+              if (period && period.length === 13) period += ":00:00Z";
+              const date = new Date(period);
+              return (
+                <tr key={idx} style={{ textAlign: "center" }}>
+                  <td>{isNaN(date.getTime()) ? 'Invalid' : date.toLocaleString()}</td>
+                  <td>{point.value.toLocaleString()}</td>
+                  <td>{getStatus(point.value)}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

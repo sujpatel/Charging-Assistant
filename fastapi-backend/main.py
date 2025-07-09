@@ -7,7 +7,11 @@ import os
 from fastapi import Depends
 from typing import Annotated
 from sqlalchemy import desc 
+from datetime import datetime, timedelta
 
+
+
+#models
 class Battery(SQLModel, table=True):
     id: int | None=Field(default=None, primary_key=True)
     battery: float
@@ -18,7 +22,8 @@ class EIAData(SQLModel, table=True):
     type: str
     value: float
     value_units: str
-    
+
+#db setup
 sqlite_file_name="database.db"
 sqlite_url=f"sqlite:///{sqlite_file_name}"
 
@@ -35,7 +40,7 @@ def get_session():
 SessionDep = Annotated[Session, Depends(get_session)]
 
 
-
+#app setup
 app = FastAPI()
 
 @app.on_event("startup")
@@ -51,7 +56,7 @@ app.add_middleware(
 )
 
 
-
+#battery api
 class BatteryData(BaseModel):
     battery_level: float
 
@@ -70,9 +75,10 @@ def receive_battery(data: BatteryData):
     print(f"Received battery level: {percent}%")
     return { "message": f"Battery level: {percent}%"}
 
+#grid api
 API_KEY = os.getenv("EIA_API_KEY")
-@app.get("/eia-data")
-async def get_eia_data(session: SessionDep):
+
+async def fetch_eia_data(session: Session):
     url = "https://api.eia.gov/v2/electricity/rto/region-data/data/"
     
     params = {
@@ -85,7 +91,7 @@ async def get_eia_data(session: SessionDep):
         "length": 5
     }
     
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         response = await client.get(url, params=params)
     
     if response.status_code != 200:
@@ -93,7 +99,7 @@ async def get_eia_data(session: SessionDep):
     
     data = response.json().get("response", {}).get("data", [])
     
-    inserted_count = 0
+
     
     for item in data:
         exists = session.exec(
@@ -110,18 +116,18 @@ async def get_eia_data(session: SessionDep):
                 value_units=item["value-units"]
                 )
             session.add(new_entry)
-            inserted_count += 1
-        
     session.commit()
-    
     return {"inserted": len(data)}
+
+@app.get("/eia-data")
+async def get_eia_data_route(session: SessionDep):
+    return await fetch_eia_data(session)
 
 @app.get("/current-grid")
 def get_current_grid(session: SessionDep):
     latest_data = session.exec(
         select(EIAData).order_by(desc(EIAData.period))
     ).first()
-    
     if not latest_data:
         return {"error": "No grid data available yet"}
     value = latest_data.value
@@ -140,7 +146,23 @@ def get_current_grid(session: SessionDep):
         "status": status
     }
         
-        
+@app.get("/grid-history-24")
+def get_grid_history_today(session: SessionDep):
+    now = datetime.utcnow()
+    start_of_day = now - timedelta(hours=24)
+    results = session.exec(
+        select(EIAData)
+        .where(EIAData.period >= start_time.isoformat())
+        .order_by(EIAData.period)
+    ).all()
+    return[
+        {"period": r.period, "value": r.value}
+        for r in results
+    ]
+    
+    
+    
+    
     
 
 

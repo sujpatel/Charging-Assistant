@@ -1,5 +1,10 @@
 
-
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+database.db
+.env
 /node_modules
 /.pnp
 .pnp.js
