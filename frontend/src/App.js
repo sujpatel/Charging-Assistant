@@ -50,7 +50,6 @@ function App() {
     ]
   };
 
-
   useEffect(() => {
     if (level !== undefined) {
       fetch("https://charging-assistant.onrender.com/items", {
@@ -59,10 +58,12 @@ function App() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ battery_level: level })
-      });
+      })
+        .catch(error => {
+          console.error("Failed to send battery data:", error);
+        });
     }
   }, [level]);
-
 
 
   useEffect(() => {
