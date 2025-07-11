@@ -15,10 +15,13 @@ function App() {
 
 
   useEffect(() => {
-    fetch('http://localhost:8000/grid-history-24')
+    fetch('https://charging-assistant.onrender.com/grid-history-24')
       .then(res => res.json())
       .then(data => {
         setHistory(data);
+      })
+      .catch(error => {
+        setError(error.toString());
       });
   }, []);
 
@@ -50,7 +53,7 @@ function App() {
 
   useEffect(() => {
     if (level !== undefined) {
-      fetch("http://localhost:8000/items", {
+      fetch("https://charging-assistant.onrender.com/items", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -63,10 +66,7 @@ function App() {
 
 
   useEffect(() => {
-    fetch('http://localhost:8000/eia-data')
-      .then(() => {
-        return fetch('http://localhost:8000/current-grid');
-      })
+    fetch('https://charging-assistant.onrender.com/current-grid')
       .then(response => response.json())
       .then(result => {
         setData(result);
