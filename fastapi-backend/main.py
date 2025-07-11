@@ -152,7 +152,7 @@ def get_grid_history_today(session: SessionDep):
     start_of_day = now - timedelta(hours=24)
     results = session.exec(
         select(EIAData)
-        .where(EIAData.period >= start_time.isoformat())
+        .where(EIAData.period >= start_of_day.isoformat())
         .order_by(EIAData.period)
     ).all()
     return[
