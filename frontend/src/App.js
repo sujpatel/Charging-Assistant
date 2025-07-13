@@ -13,6 +13,14 @@ function App() {
 
   const [history, setHistory] = useState([]);
 
+  const now = new Date();
+  const filteredHistory = history.filter(point => {
+    let period = point.period;
+    if (period && period.length === 13) period += ":00Z";
+    const date = new Date(period);
+    return date <= now;
+  });
+
 
   useEffect(() => {
     fetch('https://charging-assistant.onrender.com/grid-history-24')
@@ -30,10 +38,10 @@ function App() {
 
   const chartData = {
     //x axis labels
-    labels: history.map(point => {
+    labels: filteredHistory.map(point => {
       let period = point.period;
       if (period && period.length === 13) {
-        period += ":00:00Z";
+        period += ":00Z";
       }
       const date = new Date(period);
       return isNaN(date.getTime()) ? 'Invalid' : date.toLocaleTimeString();
@@ -42,7 +50,7 @@ function App() {
     datasets: [
       {
         label: 'Grid Demand (MW)',
-        data: history.map(point => point.value),
+        data: filteredHistory.map(point => point.value),
         fill: false,
         borderColor: 'rgb(75, 192, 192)',
         tension: 0.1
@@ -130,9 +138,9 @@ function App() {
             </tr>
           </thead>
           <tbody>
-            {history.map((point, idx) => {
+            {filteredHistory.map((point, idx) => {
               let period = point.period;
-              if (period && period.length === 13) period += ":00:00Z";
+              if (period && period.length === 13) period += ":00Z";
               const date = new Date(period);
               return (
                 <tr key={idx} style={{ textAlign: "center" }}>
