@@ -145,6 +145,7 @@ def get_current_grid(session: SessionDep):
         "unit": latest_data.value_units,
         "status": status
     }
+    
         
 @app.get("/grid-history-24")
 def get_grid_history_today(session: SessionDep):
