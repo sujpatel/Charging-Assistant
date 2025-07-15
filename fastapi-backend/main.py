@@ -102,6 +102,8 @@ async def fetch_eia_data(session: Session):
 
     
     for item in data:
+        if item["type"] != "RT":
+            continue
         exists = session.exec(
             select(EIAData).where(
                 EIAData.period == item["period"],
