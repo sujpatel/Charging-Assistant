@@ -88,7 +88,7 @@ async def fetch_eia_data(session: Session):
         "facets[respondent][]": "PJM",
         "sort[0][column]": "period",
         "sort[0][direction]": "desc",
-        "length": 1
+        "length": 48
     }
     
     async with httpx.AsyncClient(timeout=30.0) as client:
