@@ -13,6 +13,8 @@ function App() {
 
   const [history, setHistory] = useState([]);
 
+  const [advice, setAdvice] = useState("");
+
   const now = new Date();
   const filteredHistory = history.filter(point => {
     let period = point.period;
@@ -49,7 +51,7 @@ function App() {
     //y axis labels
     datasets: [
       {
-        label: 'Grid Demand (MW)',
+        label: 'Grid Demand (MW) Last 24 Hours',
         data: filteredHistory.map(point => point.value),
         fill: false,
         borderColor: 'rgb(75, 192, 192)',
@@ -84,6 +86,43 @@ function App() {
         setError(error.toString());
       });
   }, []);
+
+  useEffect(() => {
+    if (level !== undefined && history.length > 0) {
+      const payload = {
+        battery_level: level,
+        grid_data: history.map(point => `${point.period}: ${point.value}`)
+      };
+      fetch("https://charging-assistant.onrender.com/advice", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(payload)
+      })
+        .then(res => res.json())
+        .then(data => {
+          setAdvice(data.advice)
+        })
+        .catch(err => console.error("Explanation failed", err));
+    }
+  }, [level, history]);
+
+
+
+  const nonDupeHistory = []
+  const seenPeriod = new Set();
+  for (const point of filteredHistory) {
+    let period = point.period;
+    if (period && period.length === 13) period += ":00Z";
+    if (!seenPeriod.has(period)) {
+      nonDupeHistory.push(point);
+      seenPeriod.add(period);
+
+    }
+  }
+
+
 
   if (error) return <p className="text-red-600">Error: {error}</p>;
   if (!data) return <p>Loading data...</p>;
@@ -138,7 +177,7 @@ function App() {
             </tr>
           </thead>
           <tbody>
-            {filteredHistory.map((point, idx) => {
+            {nonDupeHistory.map((point, idx) => {
               let period = point.period;
               if (period && period.length === 13) period += ":00Z";
               const date = new Date(period);
@@ -148,10 +187,15 @@ function App() {
                   <td>{point.value.toLocaleString()}</td>
                   <td>{getStatus(point.value)}</td>
                 </tr>
-              );
+              )
             })}
           </tbody>
         </table>
+        {advice && (
+          <div className="bg-blue-100 text-blue-800 p-4 my-4 rounded">
+            <strong>AI Advice:</strong> {advice}
+          </div>
+        )}
       </div>
     </div>
   );
