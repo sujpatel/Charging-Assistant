@@ -8,8 +8,49 @@ from fastapi import Depends
 from typing import Annotated
 from sqlalchemy import desc 
 from datetime import datetime, timedelta
+from dotenv import load_dotenv
+from fastapi import HTTPException
 
+load_dotenv()
+app = FastAPI()
 
+class AdviceRequest(BaseModel):
+    battery_level: float
+    grid_data: list
+
+@app.post("/advice")
+async def get_ai_advice(request: AdviceRequest):
+    prompt = f"""
+You are an energy assistant. A user has a battery level of {request.battery_level * 100:.0f}%.
+The part 24 hours of grid demand are:
+{request.grid_data}
+
+Give a brief and helpful charging recommendation based on current and recent grid load. 
+Respond in 1-2 sentences.
+"""
+
+    try:
+        async with httpx.AsyncClient() as client:
+            res = await client.post(
+                "https://openrouter.ai/api/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {os.getenv('OPENROUTER_API_KEY')}",
+                    "Content-Type": "application/json"
+                },
+                json={
+                    "model": "openchat/openchat-3.5-1210",
+                    "messages": [
+                        {"role": "system", "content": "You are a helpful energy-saving assistant."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    "temperature": 0.7
+                }
+            )
+            response = res.json()
+            return {"advice": response["choices"][0]["message"]["content"]}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
 
 #models
 class Battery(SQLModel, table=True):
@@ -40,8 +81,7 @@ def get_session():
 SessionDep = Annotated[Session, Depends(get_session)]
 
 
-#app setup
-app = FastAPI()
+
 
 @app.on_event("startup")
 def on_start():
