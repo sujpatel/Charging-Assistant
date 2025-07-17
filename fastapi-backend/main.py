@@ -38,7 +38,7 @@ Respond in 1-2 sentences.
                     "Content-Type": "application/json"
                 },
                 json={
-                    "model": "openchat/openchat-3.5-1210",
+                    "model": "meta-llama/llama-3.3-70b-instruct:free",
                     "messages": [
                         {"role": "system", "content": "You are a helpful energy-saving assistant."},
                         {"role": "user", "content": prompt}
